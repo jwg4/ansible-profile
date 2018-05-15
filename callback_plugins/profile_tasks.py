@@ -1,6 +1,7 @@
 import datetime
 import os
 import time
+from collections import defaultdict
 from ansible.plugins.callback import CallbackBase
 
 
@@ -10,7 +11,8 @@ class CallbackModule(CallbackBase):
     """
     def __init__(self):
         super(CallbackModule, self).__init__()
-        self.stats = {}
+        self.start_times = {}
+        self.stats = defaultdict(lambda: 0)
         self.current = None
 
     def playbook_on_task_start(self, name, is_conditional):
@@ -23,11 +25,11 @@ class CallbackModule(CallbackBase):
 
         if self.current is not None:
             # Record the running time of the last executed task
-            self.stats[self.current] = time.time() - self.stats[self.current]
+            self.stats[self.current] = self.stats[self.current] + (time.time() - self.start_times[self.current])
 
         # Record the start time of the current task
         self.current = name
-        self.stats[self.current] = time.time()
+        self.start_times[self.current] = time.time()
 
     def playbook_on_stats(self, stats):
         """
@@ -39,7 +41,7 @@ class CallbackModule(CallbackBase):
 
         # Record the timing of the very last task
         if self.current is not None:
-            self.stats[self.current] = time.time() - self.stats[self.current]
+            self.stats[self.current] = self.stats[self.current] + (time.time() - self.start_times[self.current])
 
         # Sort the tasks by their running time
         results = sorted(
